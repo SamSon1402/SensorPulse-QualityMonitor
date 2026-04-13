@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SensorPulse-QualityMonitor | CowManager</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #22c55e;
+            --primary-glow: rgba(34, 197, 94, 0.4);
+            --secondary: #3b82f6;
+            --accent: #f59e0b;
+            --warning: #f59e0b;
+            --success: #22c55e;
+            --danger: #ef4444;
+            --bg-dark: #050d09;
+            --bg-card: #0a1a10;
+            --bg-elevated: #0f2818;
+            --text-primary: #e8f5e9;
+            --text-secondary: #81c784;
+            --text-muted: #4a7c50;
+            --border: #1b3d24;
+            --cow-gradient: linear-gradient(135deg, #22c55e 0%, #3b82f6 50%, #f59e0b 100%);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            min-height: 100vh;
+            background-image:
+                radial-gradient(ellipse at 0% 100%, rgba(34,197,94,0.08) 0%, transparent 50%),
+                radial-gradient(ellipse at 100% 0%, rgba(59,130,246,0.06) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 50%, rgba(245,158,11,0.03) 0%, transparent 70%);
+        }
+        .header {
+            background: linear-gradient(180deg, rgba(34,197,94,0.05) 0%, transparent 100%);
+            border-bottom: 1px solid var(--border);
+            padding: 0.75rem 2rem;
+            position: sticky; top: 0; z-index: 100;
+            backdrop-filter: blur(20px);
+        }
+        .header-content {
+            max-width: 1800px; margin: 0 auto;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .logo { display: flex; align-items: center; gap: 0.75rem; }
+        .logo-icon {
+            width: 46px; height: 46px;
+            background: var(--cow-gradient);
+            border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.4rem; position: relative;
+        }
+        .logo-icon::after {
+            content: ''; position: absolute; inset: -2px;
+            background: var(--cow-gradient); border-radius: 14px;
+            z-index: -1; opacity: 0.5; filter: blur(8px);
+        }
+        .logo-text {
+            font-size: 1.5rem; font-weight: 800;
+            background: var(--cow-gradient);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .logo-subtitle {
+            font-size: 0.6rem; color: var(--text-secondary);
+            text-transform: uppercase; letter-spacing: 3px; font-weight: 500;
+        }
+        .header-badges { display: flex; gap: 0.4rem; }
+        .badge {
+            background: var(--bg-card); border: 1px solid var(--border);
+            padding: 0.35rem 0.7rem; border-radius: 6px;
+            font-size: 0.65rem; color: var(--text-secondary);
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .badge.live {
+            background: rgba(34,197,94,0.15); border-color: var(--primary); color: var(--primary);
+        }
+        .badge.live::before {
+            content: ''; display: inline-block; width: 6px; height: 6px;
+            background: var(--primary); border-radius: 50%; margin-right: 5px;
+            animation: livePulse 1.5s ease-in-out infinite;
+        }
+        @keyframes livePulse {
+            0%, 100% { opacity: 1; box-shadow: 0 0 0 0 var(--primary-glow); }
+            50% { opacity: 0.6; box-shadow: 0 0 0 8px transparent; }
+        }
+        .main { max-width: 1800px; margin: 0 auto; padding: 1.5rem 2rem; }
+        .hero { text-align: center; margin-bottom: 1.5rem; }
+        .hero h1 {
+            font-size: 2.2rem; font-weight: 900; margin-bottom: 0.4rem;
+            background: var(--cow-gradient);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .hero p { color: var(--text-secondary); font-size: 0.95rem; }
+
+        /* KPI Row */
+        .kpi-row {
+            display: grid; grid-template-columns: repeat(5, 1fr);
+            gap: 1rem; margin-bottom: 1.25rem;
+        }
+        .kpi-card {
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: 14px; padding: 1.1rem 1.25rem;
+            position: relative; overflow: hidden;
+        }
+        .kpi-card::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+        }
+        .kpi-card.green::before { background: var(--success); }
+        .kpi-card.blue::before { background: var(--secondary); }
+        .kpi-card.amber::before { background: var(--accent); }
+        .kpi-card.red::before { background: var(--danger); }
+        .kpi-card.purple::before { background: #a855f7; }
+        .kpi-label {
+            font-size: 0.65rem; text-transform: uppercase; letter-spacing: 1.5px;
+            color: var(--text-muted); margin-bottom: 0.4rem; font-weight: 600;
+        }
+        .kpi-value {
+            font-size: 1.7rem; font-weight: 800;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .kpi-value.green { color: var(--success); }
+        .kpi-value.blue { color: var(--secondary); }
+        .kpi-value.amber { color: var(--accent); }
+        .kpi-value.red { color: var(--danger); }
+        .kpi-value.purple { color: #a855f7; }
+        .kpi-delta {
+            font-size: 0.7rem; font-family: 'JetBrains Mono', monospace;
+            margin-top: 0.3rem;
+        }
+        .kpi-delta.up { color: var(--success); }
+        .kpi-delta.down { color: var(--danger); }
+
+        /* Workspace Grid */
+        .workspace {
+            display: grid; grid-template-columns: 1fr 380px;
+            gap: 1.25rem;
+        }
+        @media (max-width: 1300px) { .workspace { grid-template-columns: 1fr; } }
+        @media (max-width: 900px) { .kpi-row { grid-template-columns: repeat(2, 1fr); } }
+
+        .card {
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: 16px; overflow: hidden;
+        }
+        .card-header {
+            padding: 1rem 1.25rem; border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; justify-content: space-between;
+            background: linear-gradient(180deg, rgba(15,40,24,0.6) 0%, transparent 100%);
+        }
+        .card-title {
+            font-size: 0.9rem; font-weight: 700;
+            display: flex; align-items: center; gap: 0.5rem;
+        }
+        .card-body { padding: 1.25rem; }
+
+        /* Sensor Grid Map */
+        .sensor-grid {
+            display: grid; grid-template-columns: repeat(8, 1fr);
+            gap: 6px; margin-bottom: 1rem;
+        }
+        .sensor-cell {
+            aspect-ratio: 1; border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.55rem; font-family: 'JetBrains Mono', monospace;
+            font-weight: 600; cursor: pointer; transition: all 0.3s;
+            position: relative; border: 1px solid transparent;
+        }
+        .sensor-cell:hover { transform: scale(1.15); z-index: 2; }
+        .sensor-cell.healthy {
+            background: rgba(34,197,94,0.25); border-color: rgba(34,197,94,0.4);
+            color: var(--success);
+        }
+        .sensor-cell.warning {
+            background: rgba(245,158,11,0.25); border-color: rgba(245,158,11,0.4);
+            color: var(--accent); animation: cellWarn 2s ease-in-out infinite;
+        }
+        .sensor-cell.critical {
+            background: rgba(239,68,68,0.3); border-color: rgba(239,68,68,0.5);
+            color: var(--danger); animation: cellCrit 1s ease-in-out infinite;
+        }
+        .sensor-cell.offline {
+            background: rgba(100,100,100,0.15); border-color: rgba(100,100,100,0.3);
+            color: #666;
+        }
+        @keyframes cellWarn {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(245,158,11,0.3); }
+            50% { box-shadow: 0 0 8px 2px rgba(245,158,11,0.2); }
+        }
+        @keyframes cellCrit {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.4); }
+            50% { box-shadow: 0 0 12px 3px rgba(239,68,68,0.3); }
+        }
+
+        /* Legend */
+        .legend {
+            display: flex; gap: 1rem; margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+        .legend-item {
+            display: flex; align-items: center; gap: 0.4rem;
+            font-size: 0.7rem; color: var(--text-secondary);
+        }
+        .legend-dot {
+            width: 10px; height: 10px; border-radius: 3px;
+        }
+        .legend-dot.healthy { background: var(--success); }
+        .legend-dot.warning { background: var(--accent); }
+        .legend-dot.critical { background: var(--danger); }
+        .legend-dot.offline { background: #555; }
+
+        /* Ingestion Chart */
+        .chart-container {
+            background: var(--bg-elevated); border-radius: 12px;
+            padding: 1rem; height: 220px; position: relative;
+            overflow: hidden;
+        }
+        .chart-title {
+            font-size: 0.75rem; font-weight: 600; margin-bottom: 0.75rem;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .chart-canvas {
+            width: 100%; height: calc(100% - 30px);
+            position: relative;
+        }
+        .chart-bar-group {
+            display: flex; align-items: flex-end; gap: 3px;
+            height: 100%; position: absolute; bottom: 0;
+        }
+        .chart-bar {
+            width: 14px; border-radius: 4px 4px 0 0;
+            transition: height 0.5s ease; cursor: pointer;
+            position: relative;
+        }
+        .chart-bar:hover { opacity: 0.85; }
+        .chart-bar.success { background: linear-gradient(180deg, var(--success), rgba(34,197,94,0.4)); }
+        .chart-bar.partial { background: linear-gradient(180deg, var(--accent), rgba(245,158,11,0.4)); }
+        .chart-bar.failed { background: linear-gradient(180deg, var(--danger), rgba(239,68,68,0.4)); }
+
+        /* Controls */
+        .controls { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+        .control-btn {
+            flex: 1; padding: 0.75rem; background: var(--bg-elevated);
+            border: 1px solid var(--border); border-radius: 10px;
+            color: var(--text-primary); font-family: 'Outfit', sans-serif;
+            font-size: 0.8rem; font-weight: 600; cursor: pointer;
+            transition: all 0.3s; display: flex; align-items: center;
+            justify-content: center; gap: 0.5rem;
+        }
+        .control-btn:hover { border-color: var(--primary); background: rgba(34,197,94,0.1); }
+        .control-btn.active { border-color: var(--primary); background: rgba(34,197,94,0.2); color: var(--primary); }
+        .control-btn.danger:hover { border-color: var(--danger); background: rgba(239,68,68,0.1); }
+
+        /* Sidebar */
+        .sidebar { display: flex; flex-direction: column; gap: 1rem; }
+
+        /* Quality Score Gauge */
+        .gauge-container {
+            display: flex; flex-direction: column; align-items: center;
+            padding: 1rem;
+        }
+        .gauge-ring {
+            width: 160px; height: 160px; border-radius: 50%;
+            background: conic-gradient(var(--success) 0deg, var(--success) 0deg, var(--bg-dark) 0deg);
+            display: flex; align-items: center; justify-content: center;
+            position: relative; transition: background 0.5s;
+        }
+        .gauge-ring::before {
+            content: ''; position: absolute;
+            width: 120px; height: 120px; border-radius: 50%;
+            background: var(--bg-card);
+        }
+        .gauge-value {
+            position: relative; z-index: 1; text-align: center;
+        }
+        .gauge-number {
+            font-size: 2.2rem; font-weight: 900;
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--success);
+        }
+        .gauge-label {
+            font-size: 0.65rem; color: var(--text-muted);
+            text-transform: uppercase; letter-spacing: 1px;
+        }
+        .gauge-subtitle {
+            text-align: center; margin-top: 0.75rem;
+            font-size: 0.75rem; color: var(--text-secondary);
+        }
+
+        /* Alerts List */
+        .alert-list { max-height: 320px; overflow-y: auto; }
+        .alert-item {
+            display: flex; gap: 0.75rem; padding: 0.75rem;
+            background: var(--bg-elevated); border-radius: 10px;
+            margin-bottom: 0.5rem; border-left: 3px solid var(--danger);
+            animation: slideIn 0.3s ease;
+        }
+        .alert-item.warn { border-left-color: var(--accent); }
+        .alert-item.info { border-left-color: var(--secondary); }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-10px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        .alert-icon {
+            width: 36px; height: 36px; border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1rem; flex-shrink: 0;
+        }
+        .alert-item .alert-icon { background: rgba(239,68,68,0.2); }
+        .alert-item.warn .alert-icon { background: rgba(245,158,11,0.2); }
+        .alert-item.info .alert-icon { background: rgba(59,130,246,0.2); }
+        .alert-content { flex: 1; min-width: 0; }
+        .alert-title-text { font-size: 0.78rem; font-weight: 600; margin-bottom: 0.1rem; }
+        .alert-meta {
+            font-size: 0.63rem; color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .alert-severity {
+            font-size: 0.65rem; font-weight: 700;
+            font-family: 'JetBrains Mono', monospace;
+            padding: 0.15rem 0.5rem; border-radius: 4px;
+            align-self: flex-start;
+        }
+        .alert-item .alert-severity { background: rgba(239,68,68,0.2); color: var(--danger); }
+        .alert-item.warn .alert-severity { background: rgba(245,158,11,0.2); color: var(--accent); }
+        .alert-item.info .alert-severity { background: rgba(59,130,246,0.2); color: var(--secondary); }
+
+        /* Source Health Table */
+        .source-table { width: 100%; border-collapse: separate; border-spacing: 0 4px; }
+        .source-table th {
+            font-size: 0.6rem; text-transform: uppercase; letter-spacing: 1px;
+            color: var(--text-muted); padding: 0.5rem 0.75rem; text-align: left;
+            font-weight: 600;
+        }
+        .source-table td {
+            background: var(--bg-elevated); padding: 0.65rem 0.75rem;
+            font-size: 0.75rem;
+        }
+        .source-table tr td:first-child { border-radius: 8px 0 0 8px; }
+        .source-table tr td:last-child { border-radius: 0 8px 8px 0; }
+        .source-name { font-weight: 600; }
+        .source-status {
+            display: inline-flex; align-items: center; gap: 0.3rem;
+            font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; font-weight: 600;
+        }
+        .source-status.ok { color: var(--success); }
+        .source-status.degraded { color: var(--accent); }
+        .source-status.down { color: var(--danger); }
+        .status-dot {
+            width: 7px; height: 7px; border-radius: 50%;
+        }
+        .status-dot.ok { background: var(--success); }
+        .status-dot.degraded { background: var(--accent); }
+        .status-dot.down { background: var(--danger); }
+        .latency-bar {
+            height: 6px; border-radius: 3px; background: var(--bg-dark);
+            width: 80px; overflow: hidden;
+        }
+        .latency-fill {
+            height: 100%; border-radius: 3px; transition: width 0.5s;
+        }
+
+        /* Processing Overlay */
+        .processing-overlay {
+            position: fixed; inset: 0;
+            background: rgba(5,13,9,0.97);
+            display: none; flex-direction: column;
+            align-items: center; justify-content: center; z-index: 1000;
+        }
+        .processing-overlay.active { display: flex; }
+        .pulse-grid {
+            display: grid; grid-template-columns: repeat(4, 1fr);
+            gap: 6px; width: 100px; height: 100px; margin-bottom: 2rem;
+        }
+        .pulse-cell {
+            background: var(--primary); border-radius: 6px;
+            animation: pPulse 1.5s ease-in-out infinite;
+        }
+        .pulse-cell:nth-child(2) { animation-delay: 0.1s; background: var(--secondary); }
+        .pulse-cell:nth-child(3) { animation-delay: 0.2s; }
+        .pulse-cell:nth-child(4) { animation-delay: 0.3s; background: var(--accent); }
+        .pulse-cell:nth-child(5) { animation-delay: 0.15s; background: var(--secondary); }
+        .pulse-cell:nth-child(6) { animation-delay: 0.25s; }
+        .pulse-cell:nth-child(7) { animation-delay: 0.35s; background: var(--accent); }
+        .pulse-cell:nth-child(8) { animation-delay: 0.45s; }
+        .pulse-cell:nth-child(9) { animation-delay: 0.55s; }
+        .pulse-cell:nth-child(10) { animation-delay: 0.3s; background: var(--secondary); }
+        .pulse-cell:nth-child(11) { animation-delay: 0.4s; }
+        .pulse-cell:nth-child(12) { animation-delay: 0.5s; background: var(--accent); }
+        .pulse-cell:nth-child(13) { animation-delay: 0.6s; background: var(--accent); }
+        .pulse-cell:nth-child(14) { animation-delay: 0.7s; }
+        .pulse-cell:nth-child(15) { animation-delay: 0.8s; background: var(--secondary); }
+        .pulse-cell:nth-child(16) { animation-delay: 0.9s; }
+        @keyframes pPulse {
+            0%, 100% { opacity: 0.2; transform: scale(0.85); }
+            50% { opacity: 1; transform: scale(1); }
+        }
+        .proc-text { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.5rem; }
+        .proc-stage {
+            font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.5rem;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .proc-bar-outer {
+            width: 280px; height: 5px; background: var(--bg-elevated);
+            border-radius: 3px; overflow: hidden;
+        }
+        .proc-bar-inner {
+            height: 100%; background: var(--cow-gradient);
+            width: 0%; transition: width 0.3s;
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed; bottom: 1.5rem; right: 1.5rem;
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: 12px; padding: 0.85rem 1.25rem;
+            display: flex; align-items: center; gap: 0.6rem;
+            box-shadow: 0 15px 50px rgba(0,0,0,0.6);
+            transform: translateY(100px); opacity: 0;
+            transition: all 0.4s cubic-bezier(0.4,0,0.2,1); z-index: 1000;
+        }
+        .toast.show { transform: translateY(0); opacity: 1; }
+        .toast-icon { font-size: 1.3rem; }
+        .toast-title { font-size: 0.85rem; font-weight: 600; }
+        .toast-message { font-size: 0.7rem; color: var(--text-muted); }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg-dark); }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <div class="logo-icon">🐄</div>
+                <div>
+                    <div class="logo-text">SensorPulse</div>
+                    <div class="logo-subtitle">CowManager Quality Monitor</div>
+                </div>
+            </div>
+            <div class="header-badges">
+                <span class="badge live">Monitoring</span>
+                <span class="badge">Databricks Lakehouse</span>
+                <span class="badge">64 Sensors</span>
+                <span class="badge">Event Hub</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="main">
+        <div class="hero">
+            <h1>📡 Sensor Ingestion Quality Monitor</h1>
+            <p>Real-time data quality tracking across all ear sensor streams — ensuring every heartbeat of cow data is reliable</p>
+        </div>
+
+        <div class="kpi-row">
+            <div class="kpi-card green">
+                <div class="kpi-label">Data Completeness</div>
+                <div class="kpi-value green" id="kpiCompleteness">—</div>
+                <div class="kpi-delta up" id="kpiCompletenessDelta">—</div>
+            </div>
+            <div class="kpi-card blue">
+                <div class="kpi-label">Active Sensors</div>
+                <div class="kpi-value blue" id="kpiSensors">—</div>
+                <div class="kpi-delta up" id="kpiSensorsDelta">—</div>
+            </div>
+            <div class="kpi-card amber">
+                <div class="kpi-label">Avg Latency</div>
+                <div class="kpi-value amber" id="kpiLatency">—</div>
+                <div class="kpi-delta" id="kpiLatencyDelta">—</div>
+            </div>
+            <div class="kpi-card red">
+                <div class="kpi-label">Anomalies (24h)</div>
+                <div class="kpi-value red" id="kpiAnomalies">—</div>
+                <div class="kpi-delta down" id="kpiAnomaliesDelta">—</div>
+            </div>
+            <div class="kpi-card purple">
+                <div class="kpi-label">Records / Min</div>
+                <div class="kpi-value purple" id="kpiRecords">—</div>
+                <div class="kpi-delta up" id="kpiRecordsDelta">—</div>
+            </div>
+        </div>
+
+        <div class="workspace">
+            <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">🗺️ Sensor Health Grid — Barn A</h3>
+                        <span style="font-size:0.7rem;color:var(--text-muted);font-family:'JetBrains Mono';" id="gridTimestamp">—</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="legend">
+                            <div class="legend-item"><div class="legend-dot healthy"></div> Healthy</div>
+                            <div class="legend-item"><div class="legend-dot warning"></div> Degraded</div>
+                            <div class="legend-item"><div class="legend-dot critical"></div> Critical</div>
+                            <div class="legend-item"><div class="legend-dot offline"></div> Offline</div>
+                        </div>
+                        <div class="sensor-grid" id="sensorGrid"></div>
+                        <div class="controls">
+                            <button class="control-btn" id="startBtn" onclick="toggleMonitoring()">
+                                <span id="startIcon">▶️</span>
+                                <span id="startText">Start Monitoring</span>
+                            </button>
+                            <button class="control-btn" onclick="resetMonitoring()">🔄 Reset</button>
+                            <button class="control-btn" onclick="injectAnomaly()">⚡ Inject Anomaly</button>
+                            <button class="control-btn danger" onclick="simulateOutage()">💀 Simulate Outage</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">📊 Ingestion Volume (Last 24h)</h3>
+                        <span style="font-size:0.65rem;color:var(--text-muted);font-family:'JetBrains Mono';">Hourly Breakdown</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <div class="chart-title">
+                                <span>Records Ingested per Hour</span>
+                                <span style="font-size:0.65rem;color:var(--text-muted);font-family:'JetBrains Mono';" id="totalIngested">—</span>
+                            </div>
+                            <div class="chart-canvas" id="chartCanvas"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">🔗 Data Source Health</h3>
+                    </div>
+                    <div class="card-body">
+                        <table class="source-table">
+                            <thead>
+                                <tr>
+                                    <th>Source</th>
+                                    <th>Status</th>
+                                    <th>Latency</th>
+                                    <th>Records/min</th>
+                                    <th>Last Sync</th>
+                                </tr>
+                            </thead>
+                            <tbody id="sourceTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">🏆 Quality Score</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="gauge-container">
+                            <div class="gauge-ring" id="gaugeRing">
+                                <div class="gauge-value">
+                                    <div class="gauge-number" id="gaugeNumber">—</div>
+                                    <div class="gauge-label">/ 100</div>
+                                </div>
+                            </div>
+                            <div class="gauge-subtitle" id="gaugeSubtitle">Start monitoring to calculate score</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">🚨 Live Alerts</h3>
+                        <span style="font-size:0.65rem;color:var(--text-muted);" id="alertCount">0 alerts</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert-list" id="alertList">
+                            <div style="color:var(--text-muted);font-size:0.8rem;text-align:center;padding:1.5rem;">
+                                Start monitoring to see alerts
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div class="processing-overlay" id="processingOverlay">
+        <div class="pulse-grid">
+            <div class="pulse-cell"></div><div class="pulse-cell"></div><div class="pulse-cell"></div><div class="pulse-cell"></div>
+            <div class="pulse-cell"></div><div class="pulse-cell"></div><div class="pulse-cell"></div><div class="pulse-cell"></div>
+            <div class="pulse-cell"></div><div class="pulse-cell"></div><div class="pulse-cell"></div><div class="pulse-cell"></div>
+            <div class="pulse-cell"></div><div class="pulse-cell"></div><div class="pulse-cell"></div><div class="pulse-cell"></div>
+        </div>
+        <div class="proc-text">Connecting to Databricks...</div>
+        <div class="proc-stage" id="procStage">Authenticating with Azure Event Hub...</div>
+        <div class="proc-bar-outer"><div class="proc-bar-inner" id="procBar"></div></div>
+    </div>
+
+    <div class="toast" id="toast">
+        <span class="toast-icon" id="toastIcon">✅</span>
+        <div>
+            <div class="toast-title" id="toastTitle">Success</div>
+            <div class="toast-message" id="toastMsg">Connected</div>
+        </div>
+    </div>
+
+    <script>
+        let monitoring = false;
+        let monitorInterval = null;
+        let sensorStates = [];
+        let alertEntries = [];
+        let totalAlerts = 0;
+        const SENSOR_COUNT = 64;
+
+        const dataSources = [
+            { name: 'Ear Sensors (IoT Hub)', type: 'iot' },
+            { name: 'Solar Router Mesh', type: 'router' },
+            { name: 'Herd Mgmt API', type: 'api' },
+            { name: 'Weather Station', type: 'weather' },
+            { name: 'Feed System', type: 'feed' },
+        ];
+
+        function init() {
+            buildSensorGrid();
+            buildChart();
+            buildSourceTable();
+        }
+
+        function buildSensorGrid() {
+            const grid = document.getElementById('sensorGrid');
+            sensorStates = [];
+            let html = '';
+            for (let i = 0; i < SENSOR_COUNT; i++) {
+                sensorStates.push('healthy');
+                html += `<div class="sensor-cell healthy" id="sensor-${i}" title="Sensor #${i+1}">${i+1}</div>`;
+            }
+            grid.innerHTML = html;
+        }
+
+        function buildChart() {
+            const canvas = document.getElementById('chartCanvas');
+            let html = '<div class="chart-bar-group" style="width:100%;display:flex;align-items:flex-end;gap:3px;padding:0 2px;">';
+            for (let i = 0; i < 24; i++) {
+                const h = 30 + Math.random() * 65;
+                const cls = h > 70 ? 'success' : h > 40 ? 'partial' : 'failed';
+                html += `<div class="chart-bar ${cls}" id="bar-${i}" style="flex:1;height:${h}%" title="${Math.floor(h*120)} records"></div>`;
+            }
+            html += '</div>';
+            canvas.innerHTML = html;
+        }
+
+        function buildSourceTable() {
+            const tbody = document.getElementById('sourceTableBody');
+            let html = '';
+            dataSources.forEach((src, i) => {
+                html += `<tr>
+                    <td><span class="source-name">${src.name}</span></td>
+                    <td><span class="source-status ok" id="src-status-${i}"><span class="status-dot ok" id="src-dot-${i}"></span> Online</span></td>
+                    <td><div class="latency-bar"><div class="latency-fill" id="src-lat-${i}" style="width:30%;background:var(--success);"></div></div></td>
+                    <td style="font-family:'JetBrains Mono';font-size:0.7rem;" id="src-rpm-${i}">—</td>
+                    <td style="font-family:'JetBrains Mono';font-size:0.65rem;color:var(--text-muted);" id="src-sync-${i}">—</td>
+                </tr>`;
+            });
+            tbody.innerHTML = html;
+        }
+
+        function toggleMonitoring() {
+            if (!monitoring) startMonitoring(); else stopMonitoring();
+        }
+
+        function startMonitoring() {
+            const overlay = document.getElementById('processingOverlay');
+            const bar = document.getElementById('procBar');
+            const stage = document.getElementById('procStage');
+            overlay.classList.add('active');
+            const stages = [
+                'Authenticating with Azure Event Hub...',
+                'Connecting to Databricks workspace...',
+                'Loading sensor registry...',
+                'Calibrating data quality rules...',
+                'Starting stream ingestion monitors...',
+                'Ready!'
+            ];
+            let p = 0, si = 0;
+            const iv = setInterval(() => {
+                p += Math.random() * 20 + 8;
+                if (p > 100) p = 100;
+                bar.style.width = p + '%';
+                const ns = Math.floor((p/100)*stages.length);
+                if (ns !== si && ns < stages.length) { si = ns; stage.textContent = stages[si]; }
+                if (p >= 100) {
+                    clearInterval(iv);
+                    setTimeout(() => { overlay.classList.remove('active'); beginMonitoring(); }, 300);
+                }
+            }, 70);
+        }
+
+        function beginMonitoring() {
+            monitoring = true;
+            document.getElementById('startIcon').textContent = '⏸️';
+            document.getElementById('startText').textContent = 'Pause Monitoring';
+            document.getElementById('startBtn').classList.add('active');
+
+            monitorInterval = setInterval(tick, 800);
+            showToast('✅', 'Monitoring Active', 'All 64 sensor streams connected');
+        }
+
+        function stopMonitoring() {
+            monitoring = false;
+            document.getElementById('startIcon').textContent = '▶️';
+            document.getElementById('startText').textContent = 'Resume Monitoring';
+            document.getElementById('startBtn').classList.remove('active');
+            if (monitorInterval) clearInterval(monitorInterval);
+            showToast('⏸️', 'Paused', 'Monitoring suspended');
+        }
+
+        function tick() {
+            // Update sensors
+            for (let i = 0; i < SENSOR_COUNT; i++) {
+                const r = Math.random();
+                if (sensorStates[i] === 'critical' && r > 0.3) {
+                    // stay critical a while
+                } else if (r > 0.97) {
+                    setSensor(i, 'critical');
+                    addAlert('critical', `Sensor #${i+1}: No data received for >5min`, 'Critical');
+                } else if (r > 0.93) {
+                    setSensor(i, 'warning');
+                    if (Math.random() > 0.5) addAlert('warn', `Sensor #${i+1}: Elevated latency (${Math.floor(800+Math.random()*400)}ms)`, 'Warning');
+                } else if (r > 0.91) {
+                    setSensor(i, 'offline');
+                } else {
+                    setSensor(i, 'healthy');
+                }
+            }
+            updateKPIs();
+            updateSources();
+            updateChart();
+            updateGauge();
+            document.getElementById('gridTimestamp').textContent = new Date().toLocaleTimeString();
+        }
+
+        function setSensor(i, state) {
+            sensorStates[i] = state;
+            const cell = document.getElementById(`sensor-${i}`);
+            cell.className = `sensor-cell ${state}`;
+        }
+
+        function updateKPIs() {
+            const healthy = sensorStates.filter(s => s === 'healthy').length;
+            const active = sensorStates.filter(s => s !== 'offline').length;
+            const completeness = ((healthy / SENSOR_COUNT) * 100).toFixed(1);
+            document.getElementById('kpiCompleteness').textContent = completeness + '%';
+            document.getElementById('kpiCompletenessDelta').textContent = completeness > 95 ? '▲ Above target' : '▼ Below 95% target';
+            document.getElementById('kpiCompletenessDelta').className = `kpi-delta ${completeness > 95 ? 'up' : 'down'}`;
+
+            document.getElementById('kpiSensors').textContent = `${active}/${SENSOR_COUNT}`;
+            document.getElementById('kpiSensorsDelta').textContent = `${SENSOR_COUNT - active} offline`;
+            document.getElementById('kpiSensorsDelta').className = `kpi-delta ${active >= 60 ? 'up' : 'down'}`;
+
+            const lat = Math.floor(120 + Math.random() * 200);
+            document.getElementById('kpiLatency').textContent = lat + 'ms';
+            document.getElementById('kpiLatencyDelta').textContent = lat < 250 ? '▲ Normal' : '▼ High';
+            document.getElementById('kpiLatencyDelta').className = `kpi-delta ${lat < 250 ? 'up' : 'down'}`;
+
+            const anomalies = sensorStates.filter(s => s === 'critical').length * 3 + sensorStates.filter(s => s === 'warning').length;
+            document.getElementById('kpiAnomalies').textContent = anomalies;
+            document.getElementById('kpiAnomaliesDelta').textContent = anomalies > 10 ? '▼ Above threshold' : '▲ Within limits';
+            document.getElementById('kpiAnomaliesDelta').className = `kpi-delta ${anomalies > 10 ? 'down' : 'up'}`;
+
+            const rpm = Math.floor(1200 + Math.random() * 400);
+            document.getElementById('kpiRecords').textContent = rpm.toLocaleString();
+            document.getElementById('kpiRecordsDelta').textContent = '▲ Steady throughput';
+        }
+
+        function updateSources() {
+            dataSources.forEach((src, i) => {
+                const r = Math.random();
+                let status = 'ok', label = 'Online', latPct, latColor;
+                if (r > 0.95) { status = 'down'; label = 'Down'; latPct = 100; latColor = 'var(--danger)'; }
+                else if (r > 0.88) { status = 'degraded'; label = 'Degraded'; latPct = 60 + Math.random()*30; latColor = 'var(--accent)'; }
+                else { latPct = 10 + Math.random()*35; latColor = 'var(--success)'; }
+                document.getElementById(`src-status-${i}`).innerHTML = `<span class="status-dot ${status}"></span> ${label}`;
+                document.getElementById(`src-status-${i}`).className = `source-status ${status}`;
+                document.getElementById(`src-lat-${i}`).style.width = latPct + '%';
+                document.getElementById(`src-lat-${i}`).style.background = latColor;
+                document.getElementById(`src-rpm-${i}`).textContent = Math.floor(200 + Math.random() * 800);
+                document.getElementById(`src-sync-${i}`).textContent = 'Just now';
+            });
+        }
+
+        function updateChart() {
+            for (let i = 0; i < 24; i++) {
+                const bar = document.getElementById(`bar-${i}`);
+                const h = 30 + Math.random() * 68;
+                bar.style.height = h + '%';
+                bar.className = `chart-bar ${h > 70 ? 'success' : h > 40 ? 'partial' : 'failed'}`;
+            }
+            document.getElementById('totalIngested').textContent = (Math.floor(180000 + Math.random() * 40000)).toLocaleString() + ' total';
+        }
+
+        function updateGauge() {
+            const healthy = sensorStates.filter(s => s === 'healthy').length;
+            const score = Math.round((healthy / SENSOR_COUNT) * 100);
+            const deg = (score / 100) * 360;
+            const color = score > 90 ? 'var(--success)' : score > 70 ? 'var(--accent)' : 'var(--danger)';
+            document.getElementById('gaugeRing').style.background =
+                `conic-gradient(${color} 0deg, ${color} ${deg}deg, var(--bg-dark) ${deg}deg)`;
+            document.getElementById('gaugeNumber').textContent = score;
+            document.getElementById('gaugeNumber').style.color = color;
+            const label = score > 90 ? 'Excellent — all systems nominal' : score > 70 ? 'Degraded — some sensors need attention' : 'Critical — immediate action required';
+            document.getElementById('gaugeSubtitle').textContent = label;
+        }
+
+        function addAlert(type, message, severity) {
+            const list = document.getElementById('alertList');
+            if (list.querySelector('div[style]')) list.innerHTML = '';
+            totalAlerts++;
+            const item = document.createElement('div');
+            item.className = `alert-item ${type === 'critical' ? '' : type}`;
+            const icon = type === 'critical' ? '🔴' : type === 'warn' ? '🟡' : '🔵';
+            item.innerHTML = `
+                <div class="alert-icon">${icon}</div>
+                <div class="alert-content">
+                    <div class="alert-title-text">${message}</div>
+                    <div class="alert-meta">${new Date().toLocaleTimeString()}</div>
+                </div>
+                <span class="alert-severity">${severity}</span>
+            `;
+            list.insertBefore(item, list.firstChild);
+            alertEntries.unshift(item);
+            if (alertEntries.length > 25) { alertEntries.pop().remove(); }
+            document.getElementById('alertCount').textContent = `${Math.min(alertEntries.length, 25)} alerts`;
+        }
+
+        function injectAnomaly() {
+            const idx = Math.floor(Math.random() * SENSOR_COUNT);
+            setSensor(idx, 'critical');
+            addAlert('critical', `Sensor #${idx+1}: Temperature spike anomaly detected (42.3°C)`, 'Critical');
+            showToast('⚡', 'Anomaly Injected', `Sensor #${idx+1} flagged as critical`);
+        }
+
+        function simulateOutage() {
+            const start = Math.floor(Math.random() * (SENSOR_COUNT - 8));
+            for (let i = start; i < start + 8; i++) {
+                setSensor(i, 'offline');
+            }
+            addAlert('critical', `Router failure: Sensors #${start+1}-${start+8} offline`, 'Critical');
+            showToast('💀', 'Outage Simulated', `8 sensors went offline (Router #${Math.floor(start/8)+1})`);
+        }
+
+        function resetMonitoring() {
+            stopMonitoring();
+            totalAlerts = 0;
+            alertEntries = [];
+            buildSensorGrid();
+            buildChart();
+            buildSourceTable();
+            document.getElementById('alertList').innerHTML = '<div style="color:var(--text-muted);font-size:0.8rem;text-align:center;padding:1.5rem;">Start monitoring to see alerts</div>';
+            document.getElementById('alertCount').textContent = '0 alerts';
+            document.getElementById('gaugeNumber').textContent = '—';
+            document.getElementById('gaugeRing').style.background = `conic-gradient(var(--success) 0deg, var(--success) 0deg, var(--bg-dark) 0deg)`;
+            document.getElementById('gaugeSubtitle').textContent = 'Start monitoring to calculate score';
+            ['kpiCompleteness','kpiSensors','kpiLatency','kpiAnomalies','kpiRecords'].forEach(id => document.getElementById(id).textContent = '—');
+            ['kpiCompletenessDelta','kpiSensorsDelta','kpiLatencyDelta','kpiAnomaliesDelta','kpiRecordsDelta'].forEach(id => document.getElementById(id).textContent = '—');
+            document.getElementById('gridTimestamp').textContent = '—';
+            document.getElementById('totalIngested').textContent = '—';
+            showToast('🔄', 'Reset Complete', 'All data cleared');
+        }
+
+        function showToast(icon, title, msg) {
+            document.getElementById('toastIcon').textContent = icon;
+            document.getElementById('toastTitle').textContent = title;
+            document.getElementById('toastMsg').textContent = msg;
+            document.getElementById('toast').classList.add('show');
+            setTimeout(() => document.getElementById('toast').classList.remove('show'), 3000);
+        }
+
+        init();
+    </script>
+</body>
+</html>
